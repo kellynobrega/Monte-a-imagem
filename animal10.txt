@@ -1,0 +1,207 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8" />
+  <title>Sliding Puzzle</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      min-height: 100vh;
+      background-color: #f0f0f0;
+      margin: 0;
+      position: relative;
+    }
+
+    #btn-voltar {
+      position: fixed;
+      top: 20px;
+      left: 20px;
+      padding: 10px 15px;
+      background-color: #ffb6c1; /* rosa bebê */
+      border: none;
+      border-radius: 5px;
+      font-weight: bold;
+      color: #333;
+      text-decoration: none;
+      cursor: pointer;
+      box-shadow: 0 2px 5px rgba(0,0,0,0.2);
+      transition: background-color 0.3s ease;
+      z-index: 10;
+    }
+
+    #btn-voltar:hover {
+      background-color: #ffa1b6;
+    }
+
+    #puzzle-container {
+      width: 600px;
+      height: 600px;
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      grid-template-rows: repeat(4, 1fr);
+      border: 2px solid #333;
+      box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
+      user-select: none;
+      position: relative; /* Adicionado para posicionar a camada de bloqueio */
+    }
+
+    .puzzle-piece {
+      width: 100%;
+      height: 100%;
+      border: 1px solid #ccc;
+      box-sizing: border-box;
+      background-image: url("https://media.discordapp.net/attachments/1063950511625220117/1424383313606344804/1.jpeg?ex=68e3bfd5&is=68e26e55&hm=4bf483458cd8a4f0c2a197a9d25c603544f1038e4a7bc2f6acae3b1a2f19b675&=&format=webp&width=402&height=402");
+      background-size: 600px 600px;
+      cursor: pointer;
+      transition: background-color 0.2s ease;
+    }
+
+    .puzzle-piece:hover {
+      background-color: #e0e0e0;
+    }
+
+    .empty-piece {
+      background-image: none !important;
+      background-color: #f8c8dc; /* rosa bebê */
+      cursor: default;
+    }
+
+    /* Estilos para a camada de bloqueio */
+    #puzzle-blocker {
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      background-color: rgba(255, 255, 255, 0.7); /* Fundo branco semi-transparente */
+      z-index: 20; /* Garante que a camada fique acima das peças */
+      display: none; /* Inicialmente escondida */
+    }
+  </style>
+</head>
+<body>
+
+<div id="puzzle-container">
+    <div id="puzzle-blocker"></div> <!-- Camada de bloqueio -->
+</div>
+
+<script>
+  const puzzleContainer = document.getElementById('puzzle-container');
+  const totalPecas = 16;
+  const puzzleImage = "https://i.postimg.cc/rmVz5L61/10.jpg";
+  const puzzleBlocker = document.getElementById('puzzle-blocker'); // Camada de bloqueio
+
+  let estadoAtual = [...Array(totalPecas).keys()];
+  let jogoAtivo = false;
+
+  // Som ao mover a peça
+  const somMove = new Audio('https://actions.google.com/sounds/v1/cartoon/wood_plank_flicks.ogg');
+    // Som de aplausos
+  const somAplausos = new Audio('https://www.soundjay.com/human/sounds/applause-8.mp3');
+
+  function criarPecas() {
+    puzzleContainer.innerHTML = '';
+    puzzleContainer.appendChild(puzzleBlocker); // Adiciona a camada de bloqueio ao container
+    for (let i = 0; i < totalPecas; i++) {
+      const div = document.createElement('div');
+      div.classList.add('puzzle-piece');
+      div.dataset.index = i;
+      div.addEventListener('click', () => {
+        if(jogoAtivo) moverPeca(i);
+      });
+      puzzleContainer.appendChild(div);
+    }
+    atualizarVisual();
+  }
+
+  function atualizarVisual() {
+    const pecas = puzzleContainer.children;
+    for (let i = 1; i < totalPecas + 1; i++) { // Começa do índice 1 para ignorar a camada de bloqueio
+      const value = estadoAtual[i-1];
+      const row = Math.floor(value / 4);
+      const col = value % 4;
+      const peca = pecas[i];
+
+      if (value === 15) {
+        peca.classList.add('empty-piece');
+        peca.style.backgroundImage = 'none';
+      } else {
+        peca.classList.remove('empty-piece');
+        peca.style.backgroundImage = `url(${puzzleImage})`;
+        peca.style.backgroundPosition = `-${col * 150}px -${row * 150}px`;
+      }
+    }
+  }
+
+  function posicoesAdjacentes(pos1, pos2) {
+    const row1 = Math.floor(pos1 / 4);
+    const col1 = pos1 % 4;
+    const row2 = Math.floor(pos2 / 4);
+    const col2 = pos2 % 4;
+    return (Math.abs(row1 - row2) + Math.abs(col1 - col2) === 1);
+  }
+
+  function moverPeca(indice) {
+    const vazio = estadoAtual.indexOf(15);
+    if (posicoesAdjacentes(indice, vazio)) {
+      [estadoAtual[indice], estadoAtual[vazio]] = [estadoAtual[vazio], estadoAtual[indice]];
+      atualizarVisual();
+
+      // Toca som ao mover
+      somMove.currentTime = 0;
+      somMove.play();
+
+      if (verificarVitoria()) {
+        // Toca som de aplausos ao vencer
+        somAplausos.play();
+        // Mostra a camada de bloqueio
+        puzzleBlocker.style.display = 'block';
+        setTimeout(() => alert('Parabéns! Você resolveu o quebra-cabeça!'), 300);
+      }
+    }
+  }
+
+  function embaralhar() {
+    let movimentos = 0;
+    while (movimentos < 300) {
+      const vazio = estadoAtual.indexOf(15);
+      const vizinhos = [];
+      for (let i = 0; i < totalPecas; i++) {
+        if (posicoesAdjacentes(i, vazio)) {
+          vizinhos.push(i);
+        }
+      }
+      const escolhido = vizinhos[Math.floor(Math.random() * vizinhos.length)];
+      [estadoAtual[escolhido], estadoAtual[vazio]] = [estadoAtual[vazio], estadoAtual[escolhido]];
+      movimentos++;
+    }
+    atualizarVisual();
+  }
+
+  function verificarVitoria() {
+    for (let i = 0; i < totalPecas - 1; i++) {
+      if (estadoAtual[i] !== i) return false;
+    }
+    return true;
+  }
+
+  function iniciarJogoComPreview() {
+    estadoAtual = [...Array(totalPecas).keys()];
+    atualizarVisual();
+    jogoAtivo = false;
+
+    setTimeout(() => {
+      embaralhar();
+      jogoAtivo = true;
+    }, 4000);
+  }
+
+  criarPecas();
+  iniciarJogoComPreview();
+</script>
+
+</body>
+</html>
